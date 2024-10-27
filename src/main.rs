@@ -43,6 +43,10 @@ fn logger_cfg() {
 
 async fn database_cfg() -> Result<PgPool, Error> {
     let database_url: String = env::var("DATABASE_URL").unwrap_or("".to_string());
+    let database_max_connections: u32 = env::var("DATABASE_MAX_CONNECTIONS")
+        .unwrap_or("0".to_string())
+        .parse()
+        .unwrap_or(0);
 
     if database_url.is_empty() {
         return Err(Error::new(
@@ -51,8 +55,15 @@ async fn database_cfg() -> Result<PgPool, Error> {
         ));
     }
 
+    if database_max_connections == 0 {
+        return Err(Error::new(
+            ErrorKind::NotFound,
+            "DATABASE_MAX_CONNECTIONS environment variable is empty.",
+        ));
+    }
+
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(database_max_connections)
         .connect(&database_url)
         .await
         .map_err(|error| {
