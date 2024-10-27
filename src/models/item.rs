@@ -2,8 +2,9 @@ use crate::models::item_type::ItemType;
 use crate::schema::data::*;
 use chrono::NaiveDate;
 use diesel::prelude::*;
+use serde::Serialize;
 
-#[derive(Queryable, Insertable, Associations)]
+#[derive(Serialize, Queryable, Insertable, Associations)]
 #[belongs_to(ItemType)]
 #[table_name = "item"]
 pub struct Item {
