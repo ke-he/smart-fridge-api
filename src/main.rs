@@ -1,13 +1,16 @@
 mod common;
 mod item;
+mod models;
+mod schema;
 
+use crate::common::r#type::db_pool::DbPool;
 use crate::common::traits::controller::Controller;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
+use diesel::r2d2::ConnectionManager;
+use diesel::PgConnection;
 use dotenv::dotenv;
 use item::controller::item_gateway::ItemGateway;
-use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
 use std::env;
 use std::io::{Error, ErrorKind};
 
@@ -41,40 +44,19 @@ fn logger_cfg() {
     env_logger::init();
 }
 
-async fn database_cfg() -> Result<PgPool, Error> {
-    let database_url: String = env::var("DATABASE_URL").unwrap_or("".to_string());
-    let database_max_connections: u32 = env::var("DATABASE_MAX_CONNECTIONS")
-        .unwrap_or("0".to_string())
+async fn database_cfg() -> Result<DbPool, Error> {
+    let database_url = env::var("DATABASE_URL")
+        .map_err(|_| Error::new(ErrorKind::NotFound, "DATABASE_URL not set"))?;
+    let max_connections: u32 = env::var("DATABASE_MAX_CONNECTIONS")
+        .unwrap_or_else(|_| "10".to_string()) // default to 10 connections if unset
         .parse()
-        .unwrap_or(0);
+        .map_err(|_| Error::new(ErrorKind::InvalidInput, "Invalid max connections"))?;
 
-    if database_url.is_empty() {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            "DATABASE_URL environment variable is empty.",
-        ));
-    }
-
-    if database_max_connections == 0 {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            "DATABASE_MAX_CONNECTIONS environment variable is empty.",
-        ));
-    }
-
-    let pool = PgPoolOptions::new()
-        .max_connections(database_max_connections)
-        .connect(&database_url)
-        .await
-        .map_err(|error| {
-            Error::new(
-                ErrorKind::Other,
-                format!(
-                    "Failed to connect to the database (url: {}): {}",
-                    database_url, error
-                ),
-            )
-        })?;
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
+    let pool = r2d2::Pool::builder()
+        .max_size(max_connections)
+        .build(manager)
+        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create pool: {}", e)))?;
 
     Ok(pool)
 }

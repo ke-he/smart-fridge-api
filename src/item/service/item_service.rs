@@ -1,17 +1,22 @@
-use sqlx::{query, PgPool, Row};
+use crate::common::errors::service_error::ServiceError;
+use crate::common::r#type::db_pool::DbPool;
+use crate::schema::data::item::dsl::{id, item, name};
+use actix_web::web;
+use diesel::prelude::*;
+use diesel::QueryDsl;
 
 pub struct ItemService;
 
 impl ItemService {
-    pub async fn get_item(&self, db_service: &PgPool, id: &i32) -> String {
-        let result = query("SELECT name FROM item WHERE id = $1")
-            .bind(id)
-            .fetch_one(db_service)
-            .await;
-
-        match result {
-            Ok(row) => row.get("name"),
-            Err(_) => "Not Found".to_string(),
-        }
+    pub async fn get_item(db_service: DbPool, item_id: i32) -> Result<String, ServiceError> {
+        web::block(move || {
+            let mut conn = db_service.get().map_err(ServiceError::from)?;
+            item.filter(id.eq(item_id))
+                .select(name)
+                .first::<String>(&mut conn)
+                .map_err(ServiceError::from)
+        })
+        .await
+        .map_err(|_| ServiceError::BlockingError)?
     }
 }

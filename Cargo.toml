@@ -13,3 +13,7 @@ tokio = { version = "1.41.0", features = ["full"] }
 sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-rustls"] }
 env_logger = "0.11.5"
 log = "0.4.22"
+diesel = { version = "2.2.4", features = ["postgres", "r2d2", "chrono"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+r2d2 = "0.8.10"
+dotenvy = "0.15.7"
