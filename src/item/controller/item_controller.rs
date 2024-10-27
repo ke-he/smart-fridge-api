@@ -1,51 +1,29 @@
+use crate::common::param::id_param::IdParam;
 use crate::common::traits::controller::Controller;
 use crate::item::service::item_service::ItemService;
 use actix_web::web::ServiceConfig;
 use actix_web::{web, HttpResponse};
+use sqlx::PgPool;
 
-pub struct ItemController {
-    service: ItemService,
-}
+pub struct ItemController;
 
 impl Controller for ItemController {
     fn cfg(cfg: &mut ServiceConfig) {
-        let controller = Self::new();
+        let item_service = ItemService;
 
-        cfg.app_data(web::Data::new(controller));
+        cfg.app_data(web::Data::new(item_service));
 
-        cfg.service(
-            web::scope("")
-                .route("/{id}", web::get().to(ItemController::read))
-                .route("/body", web::post().to(ItemController::read_body)),
-        );
+        cfg.service(web::scope("").route("/{id}", web::get().to(ItemController::get_item)));
     }
-}
-
-#[derive(serde::Deserialize)]
-pub struct ReadParam {
-    id: i32,
 }
 
 impl ItemController {
-    pub fn new() -> Self {
-        Self {
-            service: ItemService,
-        }
-    }
-
-    pub async fn read(
-        controller: web::Data<ItemController>,
-        param: web::Path<ReadParam>,
+    pub async fn get_item(
+        pool: web::Data<PgPool>,
+        item_service: web::Data<ItemService>,
+        param: web::Path<IdParam>,
     ) -> HttpResponse {
-        let result = controller.service.read();
-        Self::response(result + &param.id.to_string())
-    }
-
-    pub async fn read_body(
-        controller: web::Data<ItemController>,
-        body: web::Json<ReadParam>,
-    ) -> HttpResponse {
-        let result = controller.service.read();
-        Self::response(result + &body.id.to_string())
+        let result = item_service.get_item(&pool, &param.id).await;
+        Self::response(result)
     }
 }
