@@ -1,6 +1,6 @@
-pub struct CrudService;
+pub struct ItemService;
 
-impl CrudService {
+impl ItemService {
     pub fn read(&self) -> String {
         "test item".to_string()
     }
