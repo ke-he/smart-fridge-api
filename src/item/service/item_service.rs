@@ -15,20 +15,18 @@ pub struct ItemService;
 impl ItemService {
     pub async fn get_items(
         db_service: DbPool,
-        search: Option<ItemsFilter>,
+        search: ItemsFilter,
     ) -> Result<Vec<Item>, ServiceError> {
         web::block(move || {
             let mut conn = db_service.get().map_err(ServiceError::from)?;
 
             let mut query = item.into_boxed();
 
-            if let Some(filter) = search {
-                if let Some(name_filter) = filter.name {
-                    query = query.filter(name.eq(name_filter));
-                }
-                if let Some(item_type_id_filter) = filter.item_type_id {
-                    query = query.filter(item_type_id.eq(item_type_id_filter));
-                }
+            if let Some(name_filter) = search.name {
+                query = query.filter(name.eq(name_filter));
+            }
+            if let Some(item_type_id_filter) = search.item_type_id {
+                query = query.filter(item_type_id.eq(item_type_id_filter));
             }
 
             query.load::<Item>(&mut conn).map_err(ServiceError::from)

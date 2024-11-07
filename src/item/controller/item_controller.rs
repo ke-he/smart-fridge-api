@@ -24,16 +24,8 @@ impl Controller for ItemController {
 }
 
 impl ItemController {
-    pub async fn get_items(
-        pool: web::Data<DbPool>,
-        body: Option<web::Json<ItemsFilter>>,
-    ) -> HttpResponse {
-        let search = match body {
-            Some(json_body) => Some(json_body.into_inner()),
-            None => None,
-        };
-
-        let result = ItemService::get_items(pool.get_ref().clone(), search).await;
+    pub async fn get_items(pool: web::Data<DbPool>, body: web::Json<ItemsFilter>) -> HttpResponse {
+        let result = ItemService::get_items(pool.get_ref().clone(), body.into_inner()).await;
 
         Self::response_handler(result)
     }
