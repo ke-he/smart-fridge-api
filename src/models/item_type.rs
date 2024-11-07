@@ -1,7 +1,8 @@
 use crate::schema::data::*;
 use diesel::prelude::*;
+use serde::Serialize;
 
-#[derive(Queryable, Insertable)]
+#[derive(Serialize, Queryable, Insertable)]
 #[table_name = "item_type"]
 pub struct ItemType {
     pub id: i32,
