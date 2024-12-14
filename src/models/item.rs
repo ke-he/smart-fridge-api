@@ -13,6 +13,7 @@ pub struct Item {
     pub id: i32,
     pub name: String,
     pub item_type_id: i32,
+    pub code: Option<String>,
     pub created_by: i32,
     pub created_at: NaiveDate,
 }
@@ -22,5 +23,6 @@ pub struct Item {
 pub struct NewItem {
     pub name: String,
     pub item_type_id: i32,
+    pub code: Option<String>,
     pub created_by: i32,
 }

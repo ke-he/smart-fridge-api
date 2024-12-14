@@ -33,6 +33,8 @@ diesel::table! {
         #[max_length = 255]
         name -> Varchar,
         item_type_id -> Int4,
+        #[max_length = 255]
+        code -> Nullable<Varchar>,
         created_by -> Int4,
         created_at -> Date,
     }
