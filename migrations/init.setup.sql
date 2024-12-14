@@ -4,8 +4,8 @@ drop table if exists fridge_item_link;
 drop table if exists item_fridge_link;
 drop table if exists home_fridge_link;
 drop table if exists user_home_link;
-drop table if exists item_type;
 drop table if exists item;
+drop table if exists item_type;
 drop table if exists fridge;
 drop table if exists home;
 drop table if exists "user";
@@ -69,6 +69,7 @@ create table item
     id           int primary key generated always as identity,
     name         varchar(255) not null,
     item_type_id int          not null,
+    code         varchar(255),
     created_by   int          not null,
     created_at   date         not null default current_timestamp,
     foreign key (created_by) references "user" (id),
