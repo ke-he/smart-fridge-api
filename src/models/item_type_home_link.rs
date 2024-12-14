@@ -1,6 +1,6 @@
 use crate::models::home::Home;
 use crate::models::item_type::ItemType;
-use crate::schema::data::*;
+use crate::schema::item_type_home_link;
 use diesel::prelude::*;
 
 #[derive(Queryable, Insertable, Associations)]

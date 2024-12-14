@@ -1,6 +1,6 @@
 use crate::models::fridge::Fridge;
 use crate::models::home::Home;
-use crate::schema::data::*;
+use crate::schema::home_fridge_link;
 use diesel::prelude::*;
 
 #[derive(Queryable, Insertable, Associations)]

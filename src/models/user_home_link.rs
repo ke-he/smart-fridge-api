@@ -1,6 +1,6 @@
 use crate::models::home::Home;
 use crate::models::user::User;
-use crate::schema::data::*;
+use crate::schema::user_home_link;
 use chrono::NaiveDate;
 use diesel::prelude::*;
 
@@ -12,5 +12,4 @@ pub struct UserHomeLink {
     pub user_id: i32,
     pub home_id: i32,
     pub join_date: NaiveDate,
-    pub is_owner: bool,
 }

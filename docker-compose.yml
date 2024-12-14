@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: smart-fridge-postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: Test1!
+      POSTGRES_DB: smart-fridge-db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - my_network
+
+volumes:
+  pgdata:
+
+networks:
+  my_network:

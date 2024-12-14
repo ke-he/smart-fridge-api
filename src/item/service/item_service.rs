@@ -3,9 +3,9 @@ use crate::common::r#type::db_pool::DbPool;
 use crate::item::controller::structs::items_filter::ItemsFilter;
 use crate::models::item::{Item, NewItem};
 use crate::models::item_type::ItemType;
-use crate::schema::data::item::dsl::item;
-use crate::schema::data::item::{expiration_date, item_type_id, name};
-use crate::schema::data::item_type::dsl::item_type;
+use crate::schema::item::dsl::item;
+use crate::schema::item::{created_by, item_type_id, name};
+use crate::schema::item_type::dsl::*;
 use actix_web::web;
 use diesel::prelude::*;
 use diesel::QueryDsl;
@@ -43,7 +43,7 @@ impl ItemService {
                 .values((
                     name.eq(new_item.name),
                     item_type_id.eq(new_item.item_type_id),
-                    expiration_date.eq(new_item.expiration_date),
+                    created_by.eq(new_item.created_by),
                 ))
                 .execute(&mut conn)
                 .map_err(ServiceError::from)
