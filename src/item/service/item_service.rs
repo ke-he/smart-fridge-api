@@ -7,12 +7,16 @@ use crate::schema::item::dsl::item;
 use crate::schema::item::{created_by, item_type_id, name};
 use crate::schema::item_type::dsl::*;
 use actix_web::web;
+use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use diesel::QueryDsl;
 
 pub struct ItemService;
 
 impl ItemService {
+    const ITEM_EXPIRY_THRESHOLD: i64 = 2;
+    const ITEM_LAST_ADDED_LIMIT: i64 = 5;
+
     pub async fn get_items(
         db_service: DbPool,
         search: ItemsFilter,
@@ -58,6 +62,41 @@ impl ItemService {
 
             item_type
                 .load::<ItemType>(&mut conn)
+                .map_err(ServiceError::from)
+        })
+        .await
+        .map_err(|_| ServiceError::BlockingError)?
+    }
+
+    pub async fn get_items_near_expiry(db_service: DbPool) -> Result<Vec<Item>, ServiceError> {
+        web::block(move || {
+            let mut conn = db_service.get().map_err(ServiceError::from)?;
+
+            let today = Utc::now().naive_utc().date();
+            let two_days_later = today + Duration::days(Self::ITEM_EXPIRY_THRESHOLD);
+
+            item.inner_join(crate::schema::item_fridge_link::dsl::item_fridge_link)
+                .filter(
+                    crate::schema::item_fridge_link::dsl::expiration_date
+                        .between(today, two_days_later),
+                )
+                .order_by(crate::schema::item_fridge_link::dsl::expiration_date.asc())
+                .select(crate::schema::item::all_columns)
+                .limit(5)
+                .load::<Item>(&mut conn)
+                .map_err(ServiceError::from)
+        })
+        .await
+        .map_err(|_| ServiceError::BlockingError)?
+    }
+
+    pub async fn get_items_last_added(db_service: DbPool) -> Result<Vec<Item>, ServiceError> {
+        web::block(move || {
+            let mut conn = db_service.get().map_err(ServiceError::from)?;
+
+            item.order_by(crate::schema::item::created_at.desc())
+                .limit(Self::ITEM_LAST_ADDED_LIMIT)
+                .load::<Item>(&mut conn)
                 .map_err(ServiceError::from)
         })
         .await
