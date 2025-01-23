@@ -5,14 +5,44 @@ mod schema;
 
 use crate::common::r#type::db_pool::DbPool;
 use crate::common::traits::controller::Controller;
+use crate::item::service::item_service::ItemService;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpServer};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use diesel::r2d2::ConnectionManager;
 use diesel::PgConnection;
 use dotenv::dotenv;
-use item::controller::item_gateway::ItemGateway;
 use std::env;
 use std::io::{Error, ErrorKind};
+use crate::item::controller::item_gateway::ItemGateway;
+
+
+
+
+
+// Route: API-Endpunkt zum Testen der OpenFoodFacts-API
+
+// Beispiel für eine Funktion, die JSON zurückgibt
+#[get("/test-openfood/{barcode}")]
+async fn test_openfood(barcode: web::Path<String>) -> impl Responder {
+    let barcode = barcode.into_inner(); // Barcode aus der URL extrahieren
+    match ItemService::get_openfood_product(&barcode).await {
+        Ok(Some(product)) => HttpResponse::Ok().json(product), // Produkt als JSON zurückgeben
+        Ok(None) => HttpResponse::NotFound().body("Product not found"),
+        Err(err) => HttpResponse::InternalServerError().body(format!("API error: {}", err)),
+    }
+}
+
+#[get("/openfood/full/{barcode}")]
+async fn full_openfood(barcode: web::Path<String>) -> impl Responder {
+    let barcode = barcode.into_inner();
+
+    // Rufe die Funktion auf, die den vollständigen JSON-Response zurückgibt
+    match ItemService::get_openfood_product_full(&barcode).await {
+        Ok(full_json) => HttpResponse::Ok().json(full_json),
+        Err(err) => HttpResponse::InternalServerError().body(format!("API error: {}", err)),
+    }
+}
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -21,6 +51,26 @@ async fn main() -> std::io::Result<()> {
     logger_cfg();
 
     let pool = database_cfg().await?;
+
+    // Testaufruf für die OpenFoodFacts-API (nur für die Logs)
+    let barcode = "3017624010701";
+    match ItemService::get_openfood_product(barcode).await {
+        Ok(Some(product)) => {
+            println!("Product found for barcode {}: {:?}", barcode, product);
+        }
+        Ok(None) => {
+            println!("No product found for barcode {}", barcode);
+        }
+        Err(err) => {
+            println!("Error getting product for barcode {}: {:?}", barcode, err);
+        }
+    }
+
+    match ItemService::get_openfood_product_full("3017624010701").await {
+        Ok(json) => println!("Full JSON response: {}", json),
+        Err(err) => println!("Error: {}", err),
+    }
+
 
     HttpServer::new(move || {
         let logger = Logger::default();
