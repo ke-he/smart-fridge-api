@@ -9,10 +9,8 @@ use crate::schema::item_type::dsl::*;
 use actix_web::web;
 use diesel::prelude::*;
 use diesel::QueryDsl;
-use reqwest::Client;
+// use reqwest::Client;
 use serde::{Deserialize, Serialize};
-
-
 
 pub struct ItemService;
 
@@ -40,7 +38,7 @@ pub struct OpenFoodFactsProduct {
     pub nutrition_grades: Option<String>,
     pub product_name: Option<String>,
     pub nutriscore_data: Option<NutriscoreData>, // Mapping von nutriscore_data
-    pub nutriments: Option<Nutriments>,         //  nutriments
+    pub nutriments: Option<Nutriments>,          //  nutriments
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -51,7 +49,47 @@ pub struct OpenFoodFactsResponse {
     pub status_verbose: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FatSecretRecipe {
+    pub recipe_id: Option<String>,
+    pub recipe_name: Option<String>,
+    pub recipe_description: Option<String>,
+    pub recipe_image: Option<String>,
+    pub recipe_nutrition: Option<RecipeNutrition>,
+    pub recipe_ingredients: Option<RecipeIngredients>,
+    pub recipe_types: Option<RecipeTypes>,
+}
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RecipeNutrition {
+    pub calories: Option<String>,
+    pub carbohydrate: Option<String>,
+    pub fat: Option<String>,
+    pub protein: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RecipeIngredients {
+    pub ingredient: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RecipeTypes {
+    pub recipe_type: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FatSecretRecipeResponse {
+    pub recipes: FatSecretRecipes,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FatSecretRecipes {
+    pub max_results: Option<String>,
+    pub page_number: Option<String>,
+    pub total_results: Option<String>,
+    pub recipe: Option<Vec<FatSecretRecipe>>,
+}
 
 impl ItemService {
     pub async fn get_items(
@@ -72,8 +110,8 @@ impl ItemService {
 
             query.load::<Item>(&mut conn).map_err(ServiceError::from)
         })
-            .await
-            .map_err(|_| ServiceError::BlockingError)?
+        .await
+        .map_err(|_| ServiceError::BlockingError)?
     }
 
     pub async fn add_item(db_service: DbPool, new_item: NewItem) -> Result<usize, ServiceError> {
@@ -89,8 +127,8 @@ impl ItemService {
                 .execute(&mut conn)
                 .map_err(ServiceError::from)
         })
-            .await
-            .map_err(|_| ServiceError::BlockingError)?
+        .await
+        .map_err(|_| ServiceError::BlockingError)?
     }
 
     pub async fn get_item_types(db_service: DbPool) -> Result<Vec<ItemType>, ServiceError> {
@@ -101,11 +139,13 @@ impl ItemService {
                 .load::<ItemType>(&mut conn)
                 .map_err(ServiceError::from)
         })
-            .await
-            .map_err(|_| ServiceError::BlockingError)?
+        .await
+        .map_err(|_| ServiceError::BlockingError)?
     }
 
-    pub async fn get_openfood_product(barcode: &str) -> Result<Option<OpenFoodFactsProduct>, ServiceError> {
+    pub async fn get_openfood_product(
+        barcode: &str,
+    ) -> Result<Option<OpenFoodFactsProduct>, ServiceError> {
         let client = reqwest::Client::new();
         let url = format!(
             "https://world.openfoodfacts.org/api/v2/product/{}?fields=product_name,nutriscore_data,nutriments,nutrition_grades",
@@ -130,17 +170,17 @@ impl ItemService {
         }
     }
 
-
-    pub async fn get_openfood_product_full(barcode: &str) -> Result<serde_json::Value, ServiceError> {
+    pub async fn get_openfood_product_full(
+        barcode: &str,
+    ) -> Result<serde_json::Value, ServiceError> {
         let client = reqwest::Client::builder()
             .user_agent("MyApp - Version 1.0 - www.myapp.com")
             .build()
-            .map_err(|err| ServiceError::ExternalServiceError(format!("Failed to create client: {}", err)))?;
+            .map_err(|err| {
+                ServiceError::ExternalServiceError(format!("Failed to create client: {}", err))
+            })?;
 
-        let url = format!(
-            "https://world.openfoodfacts.org/api/v2/product/{}",
-            barcode
-        );
+        let url = format!("https://world.openfoodfacts.org/api/v2/product/{}", barcode);
 
         // API-Aufruf
         let response = client.get(&url).send().await.map_err(|err| {
@@ -155,7 +195,89 @@ impl ItemService {
         Ok(full_json)
     }
 
+    pub async fn get_fatsecret_access_token() -> Result<String, ServiceError> {
+        let client = reqwest::Client::new();
+        let token_url = "https://oauth.fatsecret.com/connect/token";
 
+        let params = [
+            // ganz secure, einfach im code :D
+            ("grant_type", "client_credentials"),
+            ("client_id", "f922bb2569f64da9a4f9cdd1563f7215"),
+            ("client_secret", "eb9c659f0f594081933e0a498ab1549f"),
+        ];
 
+        let response = client
+            .post(token_url)
+            .form(&params)
+            .send()
+            .await
+            .map_err(|err| {
+                ServiceError::ExternalServiceError(format!("Failed to fetch token: {}", err))
+            })?;
 
+        // Weirder fehler. Chatgpt logik xD
+        let response_body = response.text().await.map_err(|err| {
+            ServiceError::ExternalServiceError(format!("Error reading response: {}", err))
+        })?;
+
+        // Raw Response ausgeben
+        println!("🔍 FatSecret Raw Response: {}", response_body);
+
+        // Parse JSON, aber kein JSON  bis jetzt
+        let json: serde_json::Value = serde_json::from_str(&response_body).map_err(|err| {
+            ServiceError::ExternalServiceError(format!("JSON parsing failed: {}", err))
+        })?;
+
+        // Token holen
+        if let Some(token) = json["access_token"].as_str() {
+            println!("✅ Successfully retrieved access token: {}", token); // Debugging
+            Ok(token.to_string())
+        } else {
+            Err(ServiceError::ExternalServiceError(
+                "Access token not found in response".to_string(),
+            ))
+        }
+    }
+
+    pub async fn get_fatsecret_recipes(
+        query: &str,
+        access_token: &str,
+    ) -> Result<FatSecretRecipeResponse, ServiceError> {
+        let client = reqwest::Client::new();
+        let url = "https://platform.fatsecret.com/rest/server.api";
+
+        // ✅ Bearer Token muss header sein
+        let response = client
+            .get(url)
+            .header("Authorization", format!("Bearer {}", access_token)) // das ist der header
+            .query(&[
+                ("method", "recipes.search.v3"),
+                ("search_expression", query),
+                ("format", "json"),
+            ])
+            .send()
+            .await
+            .map_err(|err| {
+                ServiceError::ExternalServiceError(format!(
+                    "❌ FatSecret API request failed: {}",
+                    err
+                ))
+            })?;
+
+        let raw_response = response.text().await.map_err(|err| {
+            ServiceError::ExternalServiceError(format!(
+                "❌ Error reading FatSecret response: {}",
+                err
+            ))
+        })?;
+
+        // Raw api
+        println!("📝 Raw FatSecret API Response: {}", raw_response);
+
+        // ✅ Debugging
+        Err(ServiceError::ExternalServiceError(format!(
+            "Raw API Response: {}",
+            raw_response
+        )))
+    }
 }

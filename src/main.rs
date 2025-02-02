@@ -5,6 +5,7 @@ mod schema;
 
 use crate::common::r#type::db_pool::DbPool;
 use crate::common::traits::controller::Controller;
+use crate::item::controller::item_gateway::ItemGateway;
 use crate::item::service::item_service::ItemService;
 use actix_web::middleware::Logger;
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
@@ -13,11 +14,6 @@ use diesel::PgConnection;
 use dotenv::dotenv;
 use std::env;
 use std::io::{Error, ErrorKind};
-use crate::item::controller::item_gateway::ItemGateway;
-
-
-
-
 
 // Route: API-Endpunkt zum Testen der OpenFoodFacts-API
 
@@ -43,6 +39,22 @@ async fn full_openfood(barcode: web::Path<String>) -> impl Responder {
     }
 }
 
+#[get("/fatsecret/recipes/{query}")]
+async fn fatsecret_recipes(query: web::Path<String>) -> impl Responder {
+    let query = query.into_inner();
+
+    match ItemService::get_fatsecret_access_token().await {
+        Ok(access_token) => {
+            match ItemService::get_fatsecret_recipes(&query, &access_token).await {
+                Ok(recipes) => HttpResponse::Ok().json(recipes), // Return the recipes as JSON
+                Err(err) => HttpResponse::InternalServerError().body(format!("API error: {}", err)),
+            }
+        }
+        Err(err) => {
+            HttpResponse::InternalServerError().body(format!("Error getting access token: {}", err))
+        }
+    }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -51,6 +63,17 @@ async fn main() -> std::io::Result<()> {
     logger_cfg();
 
     let pool = database_cfg().await?;
+
+    match ItemService::get_fatsecret_access_token().await {
+        Ok(token) => println!("✅ FatSecret Access Token: {}", token),
+        Err(err) => println!("❌ Error getting access token: {}", err),
+    }
+
+    // 🔍 Test for chicken, aber geht nicht gerade
+    match ItemService::get_fatsecret_recipes("chicken", "your_temp_token_here").await {
+        Ok(recipes) => println!("✅ FatSecret Recipes Response: {:?}", recipes),
+        Err(err) => println!("❌ Error fetching recipes: {}", err),
+    }
 
     // Testaufruf für die OpenFoodFacts-API (nur für die Logs)
     let barcode = "3017624010701";
@@ -66,16 +89,19 @@ async fn main() -> std::io::Result<()> {
         }
     }
 
-    match ItemService::get_openfood_product_full("3017624010701").await {
+    // Das Auskommentieren damit weniger shit im Log steht
+    /*match ItemService::get_openfood_product_full("3017624010701").await {
         Ok(json) => println!("Full JSON response: {}", json),
         Err(err) => println!("Error: {}", err),
-    }
-
+    }*/
 
     HttpServer::new(move || {
         let logger = Logger::default();
         App::new()
             .wrap(logger)
+            .service(test_openfood)
+            .service(full_openfood)
+            .service(fatsecret_recipes)
             .app_data(web::Data::new(pool.clone()))
             .configure(ItemGateway::cfg)
     })
