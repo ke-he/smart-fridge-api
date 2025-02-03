@@ -18,7 +18,15 @@ impl Controller for ItemController {
             web::scope("")
                 .route("/", web::post().to(ItemController::get_items))
                 .route("/add", web::post().to(ItemController::add_item))
-                .route("/type", web::get().to(ItemController::get_item_types)),
+                .route("/type", web::get().to(ItemController::get_item_types))
+                .route(
+                    "/near-expiry",
+                    web::get().to(ItemController::get_items_near_expiry),
+                )
+                .route(
+                    "/last-added",
+                    web::get().to(ItemController::get_items_last_added),
+                ),
         );
     }
 }
@@ -38,6 +46,18 @@ impl ItemController {
 
     pub async fn get_item_types(pool: web::Data<DbPool>) -> HttpResponse {
         let result = ItemService::get_item_types(pool.get_ref().clone()).await;
+
+        Self::response_handler(result)
+    }
+
+    pub async fn get_items_near_expiry(pool: web::Data<DbPool>) -> HttpResponse {
+        let result = ItemService::get_items_near_expiry(pool.get_ref().clone()).await;
+
+        Self::response_handler(result)
+    }
+
+    pub async fn get_items_last_added(pool: web::Data<DbPool>) -> HttpResponse {
+        let result = ItemService::get_items_last_added(pool.get_ref().clone()).await;
 
         Self::response_handler(result)
     }
