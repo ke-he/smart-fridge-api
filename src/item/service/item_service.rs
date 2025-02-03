@@ -1,3 +1,4 @@
+use std::env;
 use crate::common::errors::service_error::ServiceError;
 use crate::common::r#type::db_pool::DbPool;
 use crate::item::controller::structs::items_filter::ItemsFilter;
@@ -199,11 +200,19 @@ impl ItemService {
         let client = reqwest::Client::new();
         let token_url = "https://oauth.fatsecret.com/connect/token";
 
+        // guck fit guardian
+
+        let client_id = env::var("FATSECRET_CLIENT_ID")
+            .map_err(|_| ServiceError::ExternalServiceError("Missing FATSECRET_CLIENT_ID".to_string()))?;
+        let client_secret = env::var("FATSECRET_CLIENT_SECRET")
+            .map_err(|_| ServiceError::ExternalServiceError("Missing FATSECRET_CLIENT_SECRET".to_string()))?;
+        let grant_type = env::var("FATSECRET_GRANT_TYPE")
+            .unwrap_or("client_credentials".to_string());
+
         let params = [
-            // ganz secure, einfach im code :D
-            ("grant_type", "client_credentials"),
-            ("client_id", "f922bb2569f64da9a4f9cdd1563f7215"),
-            ("client_secret", "eb9c659f0f594081933e0a498ab1549f"),
+            ("grant_type", grant_type.as_str()),
+            ("client_id", client_id.as_str()),
+            ("client_secret", client_secret.as_str()),
         ];
 
         let response = client
