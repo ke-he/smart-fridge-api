@@ -7,7 +7,8 @@ use crate::common::r#type::db_pool::DbPool;
 use crate::common::traits::controller::Controller;
 use crate::item::controller::item_gateway::ItemGateway;
 use actix_web::middleware::Logger;
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpServer};
+use common::controller::recipe_gateway::RecipeGateway;
 use diesel::r2d2::ConnectionManager;
 use diesel::PgConnection;
 use dotenv::dotenv;
@@ -28,6 +29,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(logger)
             .app_data(web::Data::new(pool.clone()))
             .configure(ItemGateway::cfg)
+            .configure(RecipeGateway::cfg)
     })
     .bind("127.0.0.1:8080")?
     .run()
