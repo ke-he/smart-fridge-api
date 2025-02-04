@@ -8,6 +8,7 @@ pub enum ServiceError {
     DatabaseError(DieselError),
     PoolError(r2d2::Error),
     BlockingError,
+    ExternalServiceError(String),
 }
 
 impl From<DieselError> for ServiceError {
@@ -28,6 +29,7 @@ impl fmt::Display for ServiceError {
             ServiceError::DatabaseError(ref err) => write!(f, "Database error: {}", err),
             ServiceError::PoolError(ref err) => write!(f, "Connection pool error: {}", err),
             ServiceError::BlockingError => write!(f, "Blocking operation failed"),
+            ServiceError::ExternalServiceError(ref err) => write!(f, "External service error: {}", err),
         }
     }
 }
@@ -44,6 +46,10 @@ impl ResponseError for ServiceError {
             ServiceError::BlockingError => {
                 HttpResponse::InternalServerError().body("Blocking operation failed")
             }
+            ServiceError::ExternalServiceError(ref err) => {
+                HttpResponse::BadGateway().body(format!("External service error: {}", err))
+            }
         }
     }
 }
+

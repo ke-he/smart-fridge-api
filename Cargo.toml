@@ -17,3 +17,5 @@ diesel = { version = "2.2.4", features = ["postgres", "r2d2", "chrono"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 r2d2 = "0.8.10"
 dotenvy = "0.15.7"
+reqwest = { version = "0.11", features = ["json"] }
+
